@@ -1,0 +1,111 @@
+name: template - landingzone
+
+on:
+  workflow_call:
+    inputs:
+        topLevelManagementGroupName:
+            required: true
+            type: string
+        managementGroupHierarchy:
+            required: false
+            default: 'prod'
+            type: string
+        location:
+            required: true
+            type: string
+        outputsMainBicep:
+            default: ./bicep-main/outputs.bicep
+            type: string
+        landingzoneMainBicep:
+            default: ./bicep-main/base.bicep
+            type: string
+        parameterFile:
+            required: true
+            type: string
+        
+jobs:
+  landingzone:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.managementGroupHierarchy }}
+    env:
+      managementGroupId: ${{ format('{0}-{1}', inputs.topLevelManagementGroupName, inputs.managementGroupHierarchy) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+    
+      - name: get github token
+        id: github-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: 871791
+          private-key: ${{ secrets.GIT_APP }}
+
+      - name: Azure login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.PLATFORM_IDENTITY_CLIENT_ID}}
+          tenant-id: ${{ secrets.TENANT_ID }}
+          allow-no-subscriptions: true
+          enable-AzPSSession: true
+
+      - name: prepare Deployment
+        id: fromBicep
+        uses: azure/powershell@v1
+        with:
+            azPSVersion: 'latest'
+            inlineScript: |
+              $TemplateFileText = [System.IO.File]::ReadAllText('${{ inputs.parameterFile }}')
+              $params = ConvertFrom-Json $TemplateFileText -AsHashtable
+              $deploymentParams = @{
+                name = "outputsFromBicep"
+                Location = "${{ inputs.location }}"
+                ManagementGroupId = ${{ env.managementGroupId }}
+                TemplateFile = "${{ inputs.outputsMainBicep }}"
+                Params = $params
+              }
+              $deployment = new-azManagementGroupDeployment @deploymentParams
+              $deployment.Outputs.GetEnumerator() | ForEach-Object {
+                  $key = $_.Key
+                  $value = $_.Value.Value
+                  write-host "$key = $value"
+                  Write-Host "::set-output name=$key::$value"
+              }
+    
+      - name: rename subscription
+        uses: azure/cli@v1
+        with:
+            inlineScript: |
+              az account subscription rename  \
+                --id ${{ steps.fromBicep.outputs.subscriptionId }} \
+                --name ${{ steps.fromBicep.outputs.subscriptionName }}
+              
+      - name: landing zone
+        id: landingzone
+        uses: azure/powershell@v1
+        with:
+            azPSVersion: 'latest'
+            inlineScript: |
+              $TemplateFileText = [System.IO.File]::ReadAllText('${{ inputs.parameterFile }}')
+              $params = ConvertFrom-Json $TemplateFileText -AsHashtable
+              $deploymentParams = @{
+                name = "landingzone"
+                Location = "${{ inputs.location }}"
+                ManagementGroupId = "${{ env.managementGroupId }}"
+                TemplateFile = "${{ inputs.landingzoneMainBicep }}"
+                Params = $params
+              }
+              $deployment = new-azManagementGroupDeployment @deploymentParams
+              $deployment.Outputs.GetEnumerator() | ForEach-Object {
+                $key = $_.Key
+                $value = $_.Value.Value
+                write-host "$key = $value"
+                Write-Host "::set-output name=$key::$value"
+              }
+
+      - name: set env variables
+        env:
+          GH_TOKEN: ${{ steps.github-token.outputs.token }}
+        run: |
+            gh secret set ${{ steps.fromBicep.outputs.project }} \
+              -b ${{ steps.landingzone.outputs.clientId }} \
+              -R azMantas/gazelle --env tst

@@ -1,0 +1,29 @@
+{
+    "basic": {
+        "project": "management",
+        "environment": "prod",
+        "location": "francecentral",
+        "subscriptionId": "84e64f94-714d-4c07-9f03-f07af8380b36",
+        "managementGroupId": "platform-prod"
+    },
+    "identity": {
+        "githubOrganizationName": "azMantas",
+        "githubRepoName": "gazelle"
+    },
+    "cost": {
+        "budget": 300
+    },
+    "policies": {
+        "tags": {
+            "subscriptionLevel": {
+                "owner": "flying@gazelle.run",
+                "engineer": "crawling@gazelle.cloud"
+            },
+            "resourceLevel": {
+                "sponsor": "MSDN",
+                "workload": "platform",
+                "environment": "prod"
+            }
+        }
+    }
+}
