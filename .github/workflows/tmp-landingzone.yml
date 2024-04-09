@@ -22,7 +22,7 @@ on:
         parameterFile:
             required: true
             type: string
-        
+
 jobs:
   landingzone:
     runs-on: ubuntu-latest
@@ -32,13 +32,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-    
-      - name: get github token
-        id: github-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: 871791
-          private-key: ${{ secrets.GIT_APP }}
 
       - name: Azure login
         uses: azure/login@v1
@@ -70,7 +63,7 @@ jobs:
                   write-host "$key = $value"
                   Write-Host "::set-output name=$key::$value"
               }
-    
+
       - name: rename subscription
         uses: azure/cli@v1
         with:
@@ -78,7 +71,7 @@ jobs:
               az account subscription rename  \
                 --id ${{ steps.fromBicep.outputs.subscriptionId }} \
                 --name ${{ steps.fromBicep.outputs.subscriptionName }}
-              
+
       - name: landing zone
         id: landingzone
         uses: azure/powershell@v1
@@ -101,11 +94,3 @@ jobs:
                 write-host "$key = $value"
                 Write-Host "::set-output name=$key::$value"
               }
-
-      - name: set env variables
-        env:
-          GH_TOKEN: ${{ steps.github-token.outputs.token }}
-        run: |
-            gh secret set ${{ steps.fromBicep.outputs.project }} \
-              -b ${{ steps.landingzone.outputs.clientId }} \
-              -R azMantas/gazelle --env tst
