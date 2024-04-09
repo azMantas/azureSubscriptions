@@ -16,7 +16,7 @@
     "policies": {
         "tags": {
             "subscriptionLevel": {
-                "owner": "flying@gazelle.run",
+                "owner": "demo@gazelle.run",
                 "engineer": "crawling@gazelle.cloud"
             },
             "resourceLevel": {
