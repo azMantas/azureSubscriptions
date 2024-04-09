@@ -52,7 +52,7 @@ jobs:
               $deploymentParams = @{
                 name = "outputsFromBicep"
                 Location = "${{ inputs.location }}"
-                ManagementGroupId = ${{ env.managementGroupId }}
+                ManagementGroupId = "${{ env.managementGroupId }}"
                 TemplateFile = "${{ inputs.outputsMainBicep }}"
                 Params = $params
               }
